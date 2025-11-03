@@ -100,14 +100,21 @@ def main(page: ft.Page):
         actualizar_estado_botones()
         page.update()
 
+    # --- FUNCIÓN CORREGIDA ---
     def limpiar_campos(e=None):
         """Limpia todos los dropdowns (alumno + materias) y actualiza la IU."""
         lista_alumnos.value = None
+        lista_alumnos.update()  # <-- CORRECCIÓN: Actualizar visualmente
+
         for d in materias_dropdowns.values():
             d.value = None
-        # Actualizar todo en lote para que se refleje visualmente
-        page.update()
-        mostrar_snackbar("Campos limpiados.", ft.Colors.BLUE_500)
+            d.update()  # <-- CORRECCIÓN: Actualizar visualmente
+        
+        # Solo mostrar el snackbar si la función fue llamada por un evento de clic
+        if e:
+            mostrar_snackbar("Campos limpiados.", ft.Colors.BLUE_500)
+        
+        page.update() # Un update general para asegurar consistencia
 
     def agregar_calificaciones(e):
         """Valida entradas, calcula promedio y agrega la fila a la tabla."""
