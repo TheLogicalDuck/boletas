@@ -25,11 +25,11 @@ def main(page: ft.Page):
     # Helper para crear dropdowns (garantiza instancias nuevas)
     def make_dropdown(label: str, width: int = 120):
         options = [ft.dropdown.Option(str(i)) for i in range(10, 101, 10)] if label != "Alumno" else [
-            ft.dropdown.Option("Juan Manuel Martínez"),
-            ft.dropdown.Option("María Fernanda Pérez"),
-            ft.dropdown.Option("José Luis González"),
-            ft.dropdown.Option("Ana María Sánchez"),
-            ft.dropdown.Option("Pedro Pérez Pérez"),
+            ft.dropdown.Option("Juan Manuel Martinez"),
+            ft.dropdown.Option("Maria Fernanda Perez"),
+            ft.dropdown.Option("Jose Luis Gonzalez"),
+            ft.dropdown.Option("Ana Maria Sanchez"),
+            ft.dropdown.Option("Pedro Perez Perez"),
         ]
         return ft.Dropdown(label=label, options=options, width=300 if label == "Alumno" else width)
 
@@ -200,7 +200,7 @@ def main(page: ft.Page):
         if not tabla_calificaciones.rows:
             mostrar_snackbar("No hay datos para exportar.", ft.Colors.RED_500)
             return
-        ruta = Path.home() / "Desktop" / "boleta_calificaciones.csv"
+        ruta = Path.home() / "Documents" / "boleta_calificaciones.csv"
         try:
             with open(ruta, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
