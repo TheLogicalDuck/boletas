@@ -10,10 +10,9 @@ def main(page: ft.Page):
     page.padding = 20
     page.scroll = ft.ScrollMode.ADAPTIVE
 
-    # estado
     fila_seleccionada: ft.DataRow | None = None
 
-    # SNACKBAR (reutilizable)
+    # SNACKBAR
     snack_bar = ft.SnackBar(content=ft.Text(""), duration=3000)
     page.overlay.append(snack_bar)
 
@@ -23,28 +22,28 @@ def main(page: ft.Page):
         snack_bar.open = True
         page.update()
 
-    # CONTROLES: alumno + materias
-    lista_alumnos = ft.Dropdown(
-        label="Alumno",
-        width=300,
-        options=[
+    # Helper para crear dropdowns (garantiza instancias nuevas)
+    def make_dropdown(label: str, width: int = 120):
+        options = [ft.dropdown.Option(str(i)) for i in range(10, 101, 10)] if label != "Alumno" else [
             ft.dropdown.Option("Juan Manuel Martínez"),
             ft.dropdown.Option("María Fernanda Pérez"),
             ft.dropdown.Option("José Luis González"),
             ft.dropdown.Option("Ana María Sánchez"),
             ft.dropdown.Option("Pedro Pérez Pérez"),
-        ],
-    )
+        ]
+        return ft.Dropdown(label=label, options=options, width=300 if label == "Alumno" else width)
 
-    # Creamos los dropdowns de materia en un dict para iterar fácilmente
+    # Controles (creados por primera vez)
+    lista_alumnos = make_dropdown("Alumno")
+
     materias_dropdowns = {
-        "Español": ft.Dropdown(label="Español", options=[ft.dropdown.Option(str(i)) for i in range(10, 101, 10)], width=120),
-        "Matemáticas": ft.Dropdown(label="Matemáticas", options=[ft.dropdown.Option(str(i)) for i in range(10, 101, 10)], width=120),
-        "Inglés": ft.Dropdown(label="Inglés", options=[ft.dropdown.Option(str(i)) for i in range(10, 101, 10)], width=120),
-        "Informática": ft.Dropdown(label="Informática", options=[ft.dropdown.Option(str(i)) for i in range(10, 101, 10)], width=120),
-        "Historia": ft.Dropdown(label="Historia", options=[ft.dropdown.Option(str(i)) for i in range(10, 101, 10)], width=120),
-        "C. Naturales": ft.Dropdown(label="C. Naturales", options=[ft.dropdown.Option(str(i)) for i in range(10, 101, 10)], width=120),
-        "Ed. Física": ft.Dropdown(label="Ed. Física", options=[ft.dropdown.Option(str(i)) for i in range(10, 101, 10)], width=120),
+        "Español": make_dropdown("Español", width=120),
+        "Matemáticas": make_dropdown("Matemáticas", width=120),
+        "Inglés": make_dropdown("Inglés", width=120),
+        "Informática": make_dropdown("Informática", width=120),
+        "Historia": make_dropdown("Historia", width=120),
+        "C. Naturales": make_dropdown("C. Naturales", width=120),
+        "Ed. Física": make_dropdown("Ed. Física", width=120),
     }
 
     # TABLA
@@ -69,17 +68,13 @@ def main(page: ft.Page):
     boton_eliminar = ft.ElevatedButton("Eliminar Fila", icon=ft.Icons.DELETE, bgcolor=ft.Colors.RED_700, color=ft.Colors.WHITE, disabled=True)
     boton_exportar = ft.ElevatedButton("Exportar a CSV", icon=ft.Icons.DOWNLOAD, disabled=True)
 
-    # FUNCIONES
-
     def actualizar_estado_botones():
-        """Habilitar/deshabilitar botones según estado."""
         boton_exportar.disabled = len(tabla_calificaciones.rows) == 0
         boton_eliminar.disabled = fila_seleccionada is None
         boton_eliminar.update()
         boton_exportar.update()
 
     def gestionar_seleccion_fila(ev: ft.ControlEvent):
-        """Se llama cuando cambia la selección de una fila (on_select_changed)."""
         nonlocal fila_seleccionada
         row = getattr(ev, "control", None)
         if row is not None:
@@ -100,24 +95,48 @@ def main(page: ft.Page):
         actualizar_estado_botones()
         page.update()
 
-    # --- FUNCIÓN CORREGIDA ---
-    def limpiar_campos(e=None):
-        """Limpia todos los dropdowns (alumno + materias) y actualiza la IU."""
-        lista_alumnos.value = None
-        lista_alumnos.update()  # <-- CORRECCIÓN: Actualizar visualmente
+    # inputs_container para poder reemplazar controles en el layout
+    inputs_row = ft.Row(
+        [
+            lista_alumnos,
+            ft.Row(list(materias_dropdowns.values()), wrap=True, spacing=10),
+        ],
+        alignment=ft.MainAxisAlignment.START,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=20
+    )
 
-        for d in materias_dropdowns.values():
-            d.value = None
-            d.update()  # <-- CORRECCIÓN: Actualizar visualmente
-        
-        # Solo mostrar el snackbar si la función fue llamada por un evento de clic
+    # 🔁 Función que reconstruye los controles de entrada (garantiza que la UI quede limpia)
+    def reconstruir_inputs():
+        nonlocal lista_alumnos, materias_dropdowns, inputs_row
+        lista_alumnos = make_dropdown("Alumno")
+        materias_dropdowns = {
+            "Español": make_dropdown("Español", width=120),
+            "Matemáticas": make_dropdown("Matemáticas", width=120),
+            "Inglés": make_dropdown("Inglés", width=120),
+            "Informática": make_dropdown("Informática", width=120),
+            "Historia": make_dropdown("Historia", width=120),
+            "C. Naturales": make_dropdown("C. Naturales", width=120),
+            "Ed. Física": make_dropdown("Ed. Física", width=120),
+        }
+        # Reemplazar controles dentro del inputs_row
+        inputs_row.controls[0] = lista_alumnos
+        inputs_row.controls[1] = ft.Row(list(materias_dropdowns.values()), wrap=True, spacing=10)
+        # quitar foco (por si el control retenía foco) y forzar update
+        try:
+            page.focus = None
+        except Exception:
+            pass
+        page.update()
+
+    # LIMPIAR: ahora recrea los controles
+    def limpiar_campos(e=None):
+        reconstruir_inputs()
         if e:
             mostrar_snackbar("Campos limpiados.", ft.Colors.BLUE_500)
-        
-        page.update() # Un update general para asegurar consistencia
 
     def agregar_calificaciones(e):
-        """Valida entradas, calcula promedio y agrega la fila a la tabla."""
+        # Nota: lista_alumnos es la referencia actualizada tras reconstruir_inputs
         if lista_alumnos.value in (None, ""):
             mostrar_snackbar("Error: Selecciona un alumno antes de agregar.", ft.Colors.RED_500)
             return
@@ -158,12 +177,12 @@ def main(page: ft.Page):
         tabla_calificaciones.rows.append(nueva_fila)
 
         mostrar_snackbar("Calificaciones agregadas.", ft.Colors.GREEN_500)
-        limpiar_campos()  # limpiar visualmente después de agregar
+        # limpiar (reconstruir) controles después de agregar
+        limpiar_campos()
         actualizar_estado_botones()
         page.update()
 
     def eliminar_fila(e):
-        """Elimina la fila seleccionada (si existe)."""
         nonlocal fila_seleccionada
         if fila_seleccionada:
             try:
@@ -194,22 +213,11 @@ def main(page: ft.Page):
         except Exception as ex:
             mostrar_snackbar(f"Error exportando: {ex}", ft.Colors.RED_500)
 
-    # enlazar botones
+    # EVENTOS
     boton_agregar.on_click = agregar_calificaciones
     boton_limpiar.on_click = limpiar_campos
     boton_eliminar.on_click = eliminar_fila
     boton_exportar.on_click = exportar_csv
-
-    # LAYOUT
-    fila_entradas = ft.Row(
-        [
-            lista_alumnos,
-            ft.Row(list(materias_dropdowns.values()), wrap=True, spacing=10),
-        ],
-        alignment=ft.MainAxisAlignment.START,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        spacing=20
-    )
 
     fila_botones = ft.Row(
         [boton_agregar, boton_limpiar, boton_eliminar, boton_exportar],
@@ -221,7 +229,7 @@ def main(page: ft.Page):
         ft.Column(
             [
                 ft.Text("Sistema de Registro de Calificaciones", style=ft.TextThemeStyle.HEADLINE_SMALL, color="white"),
-                fila_entradas,
+                inputs_row,
                 fila_botones,
                 ft.Divider(),
                 tabla_calificaciones
