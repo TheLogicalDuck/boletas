@@ -145,9 +145,9 @@ def main(page: ft.Page):
         if not tabla_calificaciones.rows:
             mostrar_snackbar("No hay datos para exportar.", ft.Colors.RED_500)
             return
-        ruta = Path.home() / "Documents" / "boleta_calificaciones.csv"
+        ruta = Path.home() / "Downloads" / "BOLETA DE CALIFICACIÓNES.csv"
         try:
-            with open(ruta, "w", newline="", encoding="utf-8") as f:
+            with open(ruta, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 header = [getattr(c.label, "value", str(c.label)) for c in tabla_calificaciones.columns]
                 writer.writerow(header)
@@ -192,4 +192,4 @@ def main(page: ft.Page):
     )
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.app(target=main, view=ft.WEB_BROWSER)
