@@ -1,6 +1,7 @@
 import flet as ft
 import csv
 from pathlib import Path
+from datetime import datetime
 
 def main(page: ft.Page):
     page.title = "Boleta de Calificaciones"
@@ -141,19 +142,33 @@ def main(page: ft.Page):
         limpiar_campos()
         page.update()
 
+    # EXPORTAR CSV (sin la columna "Acción")
     def exportar_csv(e):
         if not tabla_calificaciones.rows:
             mostrar_snackbar("No hay datos para exportar.", ft.Colors.RED_500)
             return
-        ruta = Path.home() / "Downloads" / "BOLETA DE CALIFICACIÓNES.csv"
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        ruta = Path.home() / "Downloads" / f"BOLETA_{timestamp}.csv"
+
         try:
             with open(ruta, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
-                header = [getattr(c.label, "value", str(c.label)) for c in tabla_calificaciones.columns]
+
+                # Excluir la última columna ("Acción") del encabezado
+                header = [getattr(c.label, "value", str(c.label)) for c in tabla_calificaciones.columns[:-1]]
                 writer.writerow(header)
+
+                # Excluir también la celda del botón eliminar
                 for row in tabla_calificaciones.rows:
-                    fila = [getattr(cell.content, "value", "") if isinstance(cell.content, ft.Text) else "" for cell in row.cells[:-1]]
+                    fila = [
+                        getattr(cell.content, "value", "")
+                        if isinstance(cell.content, ft.Text)
+                        else ""
+                        for cell in row.cells[:-1]
+                    ]
                     writer.writerow(fila)
+
             mostrar_snackbar(f"Exportado a {ruta}", ft.Colors.GREEN_500)
         except Exception as ex:
             mostrar_snackbar(f"Error exportando: {ex}", ft.Colors.RED_500)
