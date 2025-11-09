@@ -1,7 +1,6 @@
 import flet as ft
 import csv
-import io
-import base64
+from pathlib import Path
 from datetime import datetime
 
 def main(page: ft.Page):
@@ -12,7 +11,7 @@ def main(page: ft.Page):
     page.padding = 20
     page.scroll = ft.ScrollMode.ADAPTIVE
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.bgcolor = "#f5f5f5"
+    page.bgcolor = "#f5f5f5"  # Un gris claro para el fondo
 
     # --- SNACKBAR PARA NOTIFICACIONES ---
     snack_bar = ft.SnackBar(content=ft.Text(""), duration=3000)
@@ -24,7 +23,7 @@ def main(page: ft.Page):
         snack_bar.open = True
         page.update()
 
-    # --- FUNCIÓN PARA CREAR DROPDOWNS ---
+    # --- FUNCIÓN PARA CREAR DROPDOWNS CON ESTILO ---
     def make_dropdown(label: str, width: int = 140):
         options = [ft.dropdown.Option(str(i)) for i in range(10, 101, 10)] if label != "Alumno" else [
             ft.dropdown.Option("Juan Manuel Martinez"),
@@ -75,9 +74,10 @@ def main(page: ft.Page):
         rows=[]
     )
 
-    # --- FUNCIONES DE LÓGICA ---
+    # --- LÓGICA DE FUNCIONAMIENTO ---
     def reconstruir_inputs():
         nonlocal lista_alumnos, materias_dropdowns
+        # Se crean nuevas instancias de los dropdowns
         lista_alumnos = make_dropdown("Alumno")
         materias_dropdowns = {
             "Español": make_dropdown("Español"),
@@ -88,8 +88,11 @@ def main(page: ft.Page):
             "C. Naturales": make_dropdown("C. Naturales"),
             "Ed. Física": make_dropdown("Ed. Física"),
         }
-        inputs_container.content.controls[1] = lista_alumnos
-        inputs_container.content.controls[2] = ft.Row(list(materias_dropdowns.values()), wrap=True, spacing=10)
+        
+        # --- CORRECCIÓN APLICADA AQUÍ ---
+        # Actualizar los controles en la interfaz usando los índices correctos
+        inputs_container.content.controls[1] = lista_alumnos # Índice 1 es el dropdown de alumno
+        inputs_container.content.controls[2] = ft.Row(list(materias_dropdowns.values()), wrap=True, spacing=10) # Índice 2 es la fila de materias
         page.update()
 
     def limpiar_campos(e=None):
@@ -145,55 +148,37 @@ def main(page: ft.Page):
 
         nueva_fila = ft.DataRow(cells=celdas)
         tabla_calificaciones.rows.append(nueva_fila)
+
         boton_borrar.on_click = lambda ev, r=nueva_fila: eliminar_fila(r)
 
         mostrar_snackbar("Calificaciones agregadas.", ft.Colors.GREEN_500)
         limpiar_campos()
         page.update()
 
-    # --- FUNCIÓN MODIFICADA PARA DESCARGAR CSV EN NAVEGADOR ---
     def exportar_csv(e):
         if not tabla_calificaciones.rows:
             mostrar_snackbar("No hay datos para exportar.", ft.Colors.RED_500)
             return
 
-        # Crear CSV en memoria
-        buffer = io.StringIO()
-        writer = csv.writer(buffer)
-        header = [getattr(c.label, "value", str(c.label)) for c in tabla_calificaciones.columns[:-1]]
-        writer.writerow(header)
-        for row in tabla_calificaciones.rows:
-            fila = [
-                getattr(cell.content, "value", "") if isinstance(cell.content, ft.Text) else ""
-                for cell in row.cells[:-1]
-            ]
-            writer.writerow(fila)
-
-        csv_data = buffer.getvalue()
-        buffer.close()
-
-        # Convertir a base64 para descarga
-        b64_data = base64.b64encode(csv_data.encode("utf-8-sig")).decode("utf-8")
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"BOLETA_{timestamp}.csv"
+        ruta = Path.home() / "Downloads" / f"BOLETA_{timestamp}.csv"
 
-        # Crear ventana con enlace de descarga
-        dialog = ft.AlertDialog(
-            title=ft.Text("Archivo listo para descargar"),
-            content=ft.TextButton(
-                text="Descargar CSV",
-                url=f"data:text/csv;base64,{b64_data}",
-                tooltip="Haz clic para descargar el archivo CSV",
-            ),
-            actions=[ft.TextButton("Cerrar", on_click=lambda _: page.dialog.close())],
-        )
-        page.dialog = dialog
-        dialog.open = True
-        page.update()
+        try:
+            with open(ruta, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                header = [getattr(c.label, "value", str(c.label)) for c in tabla_calificaciones.columns[:-1]]
+                writer.writerow(header)
+                for row in tabla_calificaciones.rows:
+                    fila = [
+                        getattr(cell.content, "value", "") if isinstance(cell.content, ft.Text) else ""
+                        for cell in row.cells[:-1]
+                    ]
+                    writer.writerow(fila)
+            mostrar_snackbar(f"Exportado a {ruta}", ft.Colors.GREEN_500)
+        except Exception as ex:
+            mostrar_snackbar(f"Error exportando: {ex}", ft.Colors.RED_500)
 
-        mostrar_snackbar("Archivo CSV generado correctamente.", ft.Colors.GREEN_500)
-
-    # --- BOTONES ---
+    # --- DISEÑO DE LA INTERFAZ (UI) ---
     boton_agregar = ft.ElevatedButton(
         "Agregar Calificaciones",
         icon=ft.Icons.ADD_ROUNDED,
@@ -218,7 +203,7 @@ def main(page: ft.Page):
         height=45,
     )
 
-    # --- CONTENEDORES ---
+    # Contenedor para los inputs con título
     inputs_container = ft.Container(
         content=ft.Column([
             ft.Row([
@@ -228,7 +213,11 @@ def main(page: ft.Page):
             lista_alumnos,
             ft.Row(list(materias_dropdowns.values()), wrap=True, spacing=10),
             ft.Divider(height=10, color="transparent"),
-            ft.Row([boton_agregar, boton_limpiar, boton_exportar], spacing=15),
+            ft.Row(
+                [boton_agregar, boton_limpiar, boton_exportar],
+                alignment=ft.MainAxisAlignment.START,
+                spacing=15
+            ),
         ]),
         padding=20,
         border_radius=12,
@@ -241,9 +230,10 @@ def main(page: ft.Page):
         )
     )
 
+    # Contenedor para la tabla con título
     tabla_container = ft.Container(
         content=ft.Column([
-            ft.Row([
+             ft.Row([
                 ft.Icon(ft.Icons.TABLE_CHART_ROUNDED, color=ft.Colors.BLUE_GREY_600),
                 ft.Text("2. Registros de Calificaciones", style=ft.TextThemeStyle.TITLE_MEDIUM, weight=ft.FontWeight.BOLD),
             ]),
@@ -261,7 +251,6 @@ def main(page: ft.Page):
         )
     )
 
-    # --- ESTRUCTURA DE PÁGINA ---
     page.add(
         ft.Column(
             [
